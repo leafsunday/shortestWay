@@ -7,16 +7,8 @@
 		<File name="siteFile" fileName="D:/site.log">
 			<PatternLayout pattern="%d{ABSOLUTE} - %m%n" />
 		</File>
-		<File name="errorFile" fileName="D:/error.log" >
-			<ThresholdFilter level="error" onMatch="ACCEPT" onMismatch="DENY"/>
-			<PatternLayout pattern="%d{ABSOLUTE} - %m%n" />
-		</File>
 	</Appenders>
-
 	<Loggers>
-	 	<logger name="SPExcutor.error" level="info" additivity="false">
-            <appender-ref ref="errorFile"/>
-        </logger>
 		<Root level="info">
 			<AppenderRef ref="siteFile" />
 		</Root>
