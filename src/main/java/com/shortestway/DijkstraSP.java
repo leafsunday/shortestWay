@@ -7,6 +7,7 @@ public class DijkstraSP {
     private SiteEdge[] edgeTo;    // edgeTo[v] = last edge on shortest s->v path
     private IndexMinPQ<Double> pq;    // priority queue of vertices
     private Map<Integer, Site> siteMap; //所有站点集合
+    private EdgeWeightedDigraph G;
 
     /**
      * Computes a shortest paths tree from <tt>s</tt> to every other vertex in
@@ -17,6 +18,7 @@ public class DijkstraSP {
      * @throws IllegalArgumentException unless 0 &le; <tt>s</tt> &le; <tt>V</tt> - 1
      */
     public DijkstraSP(EdgeWeightedDigraph G, int s, Map<Integer, Site> siteMap) {
+    	this.G = G;
     	this.siteMap = siteMap;
         distTo = new double[G.V()];
         edgeTo = new SiteEdge[G.V()];
@@ -78,6 +80,11 @@ public class DijkstraSP {
         for (SiteEdge e = edgeTo[v]; e != null; e = edgeTo[e.from()]) {
         	pathInfo.insert(0, siteMap.get(e.from()).getSiteNo()+",");
         }
+        pathInfo.append(siteMap.get(v).getSiteNo());
         return pathInfo;
+    }
+    
+    public EdgeWeightedDigraph getG(){
+    	return G;
     }
 }

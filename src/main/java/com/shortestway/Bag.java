@@ -14,8 +14,9 @@ public class Bag<Item> implements Iterable<Item> {
         private Node<Item> next;
         
         private void delete(Node<Item> previous, Item item){
-        	if(this.item == item){
+        	if(this.item.equals(item)){
         		previous.next = this.next ;
+        		N--;
         	}else{
         		if(this.next != null){
         			this.next.delete(this, item);
@@ -61,14 +62,17 @@ public class Bag<Item> implements Iterable<Item> {
     }
 
     public void remove(Item item){
-    	if(first.item == item){
-    		if(first.next != null){
-    			first = first.next;
-    		}else{
-    			first = null;
-    		}
-    	}else{
-    		first.next.delete(this.first, item);
+    	if(first != null){
+    		if(first.item.equals(item)){
+        		if(first.next != null){
+        			first = first.next;
+        		}else{
+        			first = null;
+        		}
+        		N--;
+        	}else{
+        		first.next.delete(this.first, item);
+        	}
     	}
     }
     

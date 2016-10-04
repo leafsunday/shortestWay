@@ -27,9 +27,11 @@ import com.shortestway.utils.DBUtils;
  *
  */
 public class SPExecutor {
-	
+
 	private Logger logger = LogManager.getLogger("SPExcutor.info");
-	
+
+	private List<SitePath> errorPathList = new ArrayList<SitePath>();
+
 	private String[] avoidPathSet = {
 			"1004,1005,2602",
 			"1004,2602,2629",
@@ -131,85 +133,157 @@ public class SPExecutor {
 		}
 		return G;
 	}
-	
-	private DijkstraSP reCompute(EdgeWeightedDigraph G, String vNo, String wNo, 
-			Map<Integer, Site> siteMapOfNo,
-			int vId, Map<Integer, Site> siteMapOfId){
-		DijkstraSP DSP = null;
-		//去掉beforeLastNo->lastNo这条边重新计算最短路径
-		EdgeWeightedDigraph g = new EdgeWeightedDigraph(G);
-		g.removeEdge(siteMapOfNo.get(vNo).getId(), siteMapOfNo.get(wNo).getId());
-		DSP = new DijkstraSP(g, vId, siteMapOfId);
-		return DSP;
-	}
-	
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private List reCheck(String[] siteNos, StringBuffer pathInfo, double pathWeight, int t, int vId,
-			Map<Integer, Site> siteMapOfId, Map<Integer, Site> siteMapOfNo, EdgeWeightedDigraph G){
-		List list = new ArrayList();
-		for(int i=siteNos.length-1;i>0;i--){
-			String lastNo = siteNos[i];
-			String beforeLastNo = siteNos[i-1];
-			//去掉beforeLastNo->lastNo这条边重新计算最短路径
-			DijkstraSP avoidDSP = reCompute(G, beforeLastNo, lastNo, siteMapOfNo, vId, siteMapOfId);
-			if(avoidDSP.hasPathTo(t)){
-				pathInfo = avoidDSP.pathTo(t);
-				pathWeight = avoidDSP.distTo(t);
-				break;
-			}else if(i==1){
-				pathInfo = null;
+
+	private boolean checkAvoidPath(String path){
+		if(path != null){
+			for(String avoidPath : avoidPathSet){
+				if(path.indexOf(avoidPath) > -1){
+					return false;
+				}
 			}
 		}
-		list.add(pathInfo);
-		list.add(pathWeight);
-		return list;
+		return true;
 	}
-	
+
+	private List<String[]> getAvoidPath(String path){
+		List<String[]> avoidPaths = new ArrayList<String[]>();
+		if(path != null){
+			for(String avoidPath : avoidPathSet){
+				if(path.indexOf(avoidPath) > -1){
+					String[] sites = avoidPath.split(",");
+					String[] edgs = new String[sites.length-1];
+					//组装边
+					for(int i=0;i<edgs.length;i++){
+						edgs[i] = sites[i]+","+sites[1+i];
+					}
+					avoidPaths.add(edgs);
+				}
+			}
+		}
+		return avoidPaths;
+	}
+
+	private boolean checkSubSitePath(List<Site> subSiteList, Map<Integer, Site> siteMapOfId, String path){
+		if(path != null){
+			for(Site subSite : subSiteList){
+				String subSiteNo = subSite.getSiteNo();
+				String parnetNo = siteMapOfId.get(subSite.getParentId()).getSiteNo();
+				int parentIndex = path.indexOf(parnetNo);
+				int subSiteIndex = path.indexOf(subSiteNo);
+				if(subSiteIndex > -1 && parentIndex > -1 && subSiteIndex < parentIndex){
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+
+	private boolean needRecordOfiSubSitePath(List<Site> subSiteList, Map<Integer, Site> siteMapOfId, 
+			String path, int from, int to){
+		boolean flag = false;
+		if(path != null){
+			for(Site subSite : subSiteList){
+				String subSiteNo = subSite.getSiteNo();
+				String parnetNo = siteMapOfId.get(subSite.getParentId()).getSiteNo();
+				int parentIndex = path.indexOf(parnetNo);
+				int subSiteIndex = path.indexOf(subSiteNo);
+				if(subSiteIndex > -1 && parentIndex > -1 && subSiteIndex < parentIndex){
+					if(subSite.getId() == from && subSite.getParentId() == to){
+						return false;
+					}
+					flag = true;
+				}
+			}
+		}
+		return flag;
+	}
+
+	private List<String[]> getSubSite(List<Site> subSiteList, Map<Integer, Site> siteMapOfId, 
+			String path, int from, int to){
+		List<String[]> subSites = new ArrayList<String[]>();
+		if(path != null){
+			for(Site subSite : subSiteList){
+				String subSiteNo = subSite.getSiteNo();
+				String parnetNo = siteMapOfId.get(subSite.getParentId()).getSiteNo();
+				int parentIndex = path.indexOf(parnetNo);
+				int subSiteIndex = path.indexOf(subSiteNo);
+				if(subSiteIndex > -1 && parentIndex > -1 && subSiteIndex < parentIndex){
+					if(subSite.getId() == from && subSite.getParentId() == to){
+					}else if(subSite.getId() == from){
+						String[] nsites = {parnetNo};
+						subSites.add(nsites);
+					}else if(subSite.getParentId() == to){
+						String[] nsites = {subSiteNo};
+						subSites.add(nsites);
+					}else{
+						String[] nsites = {subSiteNo, parnetNo};
+						subSites.add(nsites);
+					}
+				}
+			}
+		}
+		return subSites;
+	}
+
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	public boolean checkPath(String path){
-		boolean passed = true;
+	public boolean check(String path){
 		List list = initSite();
-		Map<Integer, Site> siteMapOfNo = (Map<Integer, Site>) list.get(0);
 		Map<Integer, Site> siteMapOfId = (Map<Integer, Site>) list.get(1);
-		List<Site> subSiteList = (List<Site>) list.get(2);//副站点
-		EdgeWeightedDigraph g = initSiteGraph(siteMapOfId.size());
-		//联通性校验
-		String[] siteNos = path.split(",");
-		for(int i=0;i+1<siteNos.length;i++){
-			if(g.getEdge(siteMapOfNo.get(siteNos[i]).getId(), 
-					siteMapOfNo.get(siteNos[i+1]).getId()) == null){
-				System.out.println("存在不联通的边:"+siteNos[i]+","+siteNos[i+1]);
+		List<Site> subSiteList = (List<Site>) list.get(2);
+		return checkAvoidPath(path) && checkSubSitePath(subSiteList, siteMapOfId, path);
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	public void exec(int from, int to) {
+		/*
+		 * 初始化数据
+		 */
+		List list = initSite();
+		final Map<Integer, Site> siteMapOfNo = (Map<Integer, Site>) list.get(0);
+		final Map<Integer, Site> siteMapOfId = (Map<Integer, Site>) list.get(1);
+		final List<Site> subSiteList = (List<Site>) list.get(2);//副站点
+		final EdgeWeightedDigraph G = initSiteGraph(siteMapOfId.size());
+
+		/*
+		 * 开始计算最短路径
+		 */
+		Site sourceSite = siteMapOfId.get(from);
+		DijkstraSP DSP = new DijkstraSP(G, from, siteMapOfId);
+		if (DSP.hasPathTo(to) && from != to) {
+			StringBuffer path = DSP.pathTo(to);
+			double pathWeight = DSP.distTo(to);
+			SitePath errorPath = null;
+			//回避路径校验
+			if(!checkAvoidPath(path.toString())){
+				errorPath = new SitePath(from, to, pathWeight, path, false, true);
+			}
+
+			//主付站校验
+			if(!checkSubSitePath(subSiteList, siteMapOfId, path.toString())){
+				if(errorPath != null){
+					errorPath.setSubSiteError(true);
+				}else{
+					errorPath = new SitePath(from, to, pathWeight, path, true, false);
+				}
+			}
+
+			if(errorPath == null){
+				path.insert(0,sourceSite.getSiteNo()+" to "+siteMapOfId.get(to).getSiteNo()
+						+"["+String.format("%.3f", pathWeight)+"] : ");
+				logger.info(path.toString());
+			}else{
+				errorPathList.add(errorPath);
 			}
 		}
-		//回头路校验
-		Map<String, Object> siteNoMap = new HashMap<String, Object>();
-		for(int i=0;i<siteNos.length;i++){
-			siteNoMap.put(siteNos[i], null);
+		for(int i=0;i<errorPathList.size();i++){
+			SitePath errorPath = errorPathList.get(i);
+			errorPath.setWeight(Double.POSITIVE_INFINITY);
+			reCompute(errorPath, subSiteList, siteMapOfId, errorPath.getWeight(), errorPath.getPath(), G, siteMapOfNo);
+			errorPath.getPath().insert(0, siteMapOfId.get(errorPath.getFrom()).getSiteNo()
+					+" to "+siteMapOfId.get(errorPath.getTo()).getSiteNo()
+					+"["+String.format("%.3f", errorPath.getWeight())+"] : ");
+			logger.info(errorPath.getPath().toString());
 		}
-		if(siteNos.length > siteNoMap.size()){
-			System.out.println("存在回头路");
-		}
-		
-		
-		//回避路径校验
-		for(String avoidPath : avoidPathSet){
-			if(path.indexOf(avoidPath) > -1){
-				System.out.println("存在回避路径:"+avoidPath);
-				passed = false;
-			}
-		}
-		//主付站校验
-		for(Site site : subSiteList){
-			String siteNo = site.getSiteNo();
-			String parnetNo = siteMapOfId.get(site.getParentId()).getSiteNo();
-			int parentIndex = path.indexOf(parnetNo);
-			int siteIndex = path.indexOf(siteNo);
-			if(siteIndex > -1 && parentIndex > -1 && siteIndex < parentIndex){
-				System.out.println("存在主付站:"+siteNo+","+parnetNo);
-			}
-		}
-		
-		return passed;
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -222,7 +296,7 @@ public class SPExecutor {
 		final Map<Integer, Site> siteMapOfId = (Map<Integer, Site>) list.get(1);
 		final List<Site> subSiteList = (List<Site>) list.get(2);//副站点
 		final EdgeWeightedDigraph G = initSiteGraph(siteMapOfId.size());
-		
+
 		/*
 		 * 开始计算最短路径
 		 */
@@ -236,42 +310,29 @@ public class SPExecutor {
 					DijkstraSP DSP = new DijkstraSP(G, vId, siteMapOfId);
 					for (int t = 0; t < G.V(); t++) {
 						if (DSP.hasPathTo(t) && vId != t) {
-							StringBuffer pathInfo = DSP.pathTo(t);
+							StringBuffer path = DSP.pathTo(t);
 							double pathWeight = DSP.distTo(t);
+							SitePath errorPath = null;
 							//回避路径校验
-							for(String avoidPath : avoidPathSet){
-								if(pathInfo != null && pathInfo.indexOf(avoidPath) > -1){
-									String[] siteNos = avoidPath.split(",");
-									List checkedList = reCheck(siteNos, pathInfo, pathWeight, t, vId, siteMapOfId, siteMapOfNo, G);
-									pathInfo = (StringBuffer) checkedList.get(0);
-									pathWeight = (Double) checkedList.get(1);
-								}
+							if(!checkAvoidPath(path.toString())){
+								errorPath = new SitePath(vId, t, pathWeight, path, false, true);
 							}
+
 							//主付站校验
-							if(pathInfo != null){
-								for(Site subSite : subSiteList){
-									if(pathInfo != null){
-										String subSiteNo = subSite.getSiteNo();
-										String parnetNo = siteMapOfId.get(subSite.getParentId()).getSiteNo();
-										int parentIndex = pathInfo.indexOf(parnetNo);
-										int subSiteIndex = pathInfo.indexOf(subSiteNo);
-										if(subSiteIndex > -1 && parentIndex > -1 && subSiteIndex < parentIndex){
-											//截取subSiteNo-->parnetNo
-											String subPath = pathInfo.substring(subSiteIndex, parentIndex+4);
-											String[] siteNos = subPath.split(",");
-											List checkedList = reCheck(siteNos, pathInfo, pathWeight, t, vId, siteMapOfId, siteMapOfNo, G);
-											pathInfo = (StringBuffer) checkedList.get(0);
-											pathWeight = (Double) checkedList.get(1);
-										}
-									}
+							if(!checkSubSitePath(subSiteList, siteMapOfId, path.toString())){
+								if(errorPath != null){
+									errorPath.setSubSiteError(true);
+								}else{
+									errorPath = new SitePath(vId, t, pathWeight, path, true, false);
 								}
 							}
-							
-							if(pathInfo != null){
-								pathInfo.insert(0,sourceSite.getSiteNo()+" to "+siteMapOfId.get(t).getSiteNo()
+
+							if(errorPath == null){
+								path.insert(0,sourceSite.getSiteNo()+" to "+siteMapOfId.get(t).getSiteNo()
 										+"["+String.format("%.3f", pathWeight)+"] : ");
-								pathInfo.append(siteMapOfId.get(t).getSiteNo());
-								logger.info(pathInfo.toString());
+								logger.info(path.toString());
+							}else{
+								errorPathList.add(errorPath);
 							}
 						}
 					}
@@ -279,5 +340,145 @@ public class SPExecutor {
 			});
 		}
 		executor.shutdown();
+		while(!executor.isTerminated()){}
+		for(int i=0;i<errorPathList.size();i++){
+			SitePath errorPath = errorPathList.get(i);
+			errorPath.setWeight(Double.POSITIVE_INFINITY);
+			reCompute(errorPath, subSiteList, siteMapOfId, errorPath.getWeight(), errorPath.getPath(), G, siteMapOfNo);
+			errorPath.getPath().insert(0, siteMapOfId.get(errorPath.getFrom()).getSiteNo()
+					+" to "+siteMapOfId.get(errorPath.getTo()).getSiteNo()
+					+"["+String.format("%.3f", errorPath.getWeight())+"] : ");
+			logger.info(errorPath.getPath().toString());
+		}
+	}
+
+	private void reCompute(SitePath errorPath, List<Site> subSiteList, Map<Integer, Site> siteMapOfId,
+			double weight, StringBuffer path, EdgeWeightedDigraph G, Map<Integer, Site> siteMapOfNo){
+		if(needRecordOfiSubSitePath(subSiteList, siteMapOfId, path.toString(), errorPath.getFrom(), errorPath.getTo())
+				|| !checkAvoidPath(path.toString())){
+			List<String[]> sites = getSubSite(subSiteList, siteMapOfId, path.toString(), errorPath.getFrom(), errorPath.getTo());
+			List<String> subSites = new ArrayList<String>();
+			//获取点的排列组合
+			if(sites.size() > 0){
+				if(sites.size() == 1){
+					String[] site = sites.get(0);
+					for(String s:site){
+						subSites.add(s);
+					}
+				}else{
+					for(int i=0;i<sites.size();i++){
+						List<String> temp = new ArrayList<String>();
+						String[] site = sites.get(i);
+						for(String s:site){
+							if(i == 0){
+								subSites.add(s);
+							}else{
+								for(int j=0;j<subSites.size();j++){
+									String ss = subSites.get(j);
+									ss = ss +","+s;
+									temp.add(ss);
+								}
+								subSites.clear();
+								subSites.addAll(temp);
+							}
+						}
+					}
+				}
+			}
+
+			//获取边的排列组合
+			List<String[]> avoidPath = getAvoidPath(path.toString());
+			List<String> edges = new ArrayList<String>();
+			if(avoidPath.size() > 0){
+				if(avoidPath.size() == 1){
+					String[] site = avoidPath.get(0);
+					for(String s:site){
+						edges.add(s);
+					}
+				}else{
+					for(int i=0;i<avoidPath.size();i++){
+						List<String> temp = new ArrayList<String>();
+						String[] site = avoidPath.get(i);
+						for(String s:site){
+							if(i == 0){
+								edges.add(s);
+							}else{
+								for(int j=0;j<edges.size();j++){
+									String ss = edges.get(j);
+									ss = ss +"|"+s;
+									temp.add(ss);
+								}
+								edges.clear();
+								edges.addAll(temp);
+							}
+						}
+					}
+				}
+			}
+
+			//开始重新计算
+			if(subSites.size() > 0 && edges.size() > 0){
+				for(int i=0;i<subSites.size();i++){
+					EdgeWeightedDigraph g = new EdgeWeightedDigraph(G);
+					String[] sts = subSites.get(i).split(",");
+					for(String s : sts){
+						//去掉这个点重新计算最短路径
+						g.removeSite(siteMapOfNo.get(s).getId());
+					}
+					for(int j=0;j<edges.size();j++){
+						String[] es = edges.get(j).split("\\|");
+						for(String e : es){
+							String[] siteNos = e.split(",");
+							String from = siteNos[0];
+							String to = siteNos[1];
+							//去掉这条边重新计算最短路径
+							g.removeEdge(siteMapOfNo.get(from).getId(), siteMapOfNo.get(to).getId());
+						}
+						DijkstraSP DSP = new DijkstraSP(g, errorPath.getFrom(), siteMapOfId);
+						int w = errorPath.getTo();
+						if(DSP.hasPathTo(w)){
+							reCompute(errorPath, subSiteList, siteMapOfId, DSP.distTo(w), DSP.pathTo(w), g, siteMapOfNo);
+						}
+					}
+				}
+			}else if(subSites.size() > 0){
+				for(int i=0;i<subSites.size();i++){
+					EdgeWeightedDigraph g = new EdgeWeightedDigraph(G);
+					String[] sts = subSites.get(i).split(",");
+					for(String s : sts){
+						//去掉这个点重新计算最短路径
+						g.removeSite(siteMapOfNo.get(s).getId());
+					}
+					DijkstraSP DSP = new DijkstraSP(g, errorPath.getFrom(), siteMapOfId);
+					int w = errorPath.getTo();
+					if(DSP.hasPathTo(w)){
+						System.out.println(DSP.pathTo(w));
+						reCompute(errorPath, subSiteList, siteMapOfId, DSP.distTo(w), DSP.pathTo(w), g, siteMapOfNo);
+					}
+				}
+			}else if(edges.size() > 0){
+				for(int i=0;i<edges.size();i++){
+					EdgeWeightedDigraph g = new EdgeWeightedDigraph(G);
+					String[] es = edges.get(i).split("\\|");
+					for(String e : es){
+						String[] siteNos = e.split(",");
+						String from = siteNos[0];
+						String to = siteNos[1];
+						//去掉这条边重新计算最短路径
+						g.removeEdge(siteMapOfNo.get(from).getId(), siteMapOfNo.get(to).getId());
+					}
+					DijkstraSP DSP = new DijkstraSP(g, errorPath.getFrom(), siteMapOfId);
+					int w = errorPath.getTo();
+					if(DSP.hasPathTo(w)){
+						reCompute(errorPath, subSiteList, siteMapOfId, DSP.distTo(w), DSP.pathTo(w), g, siteMapOfNo);
+					}
+				}
+			}
+		}else{
+			if(errorPath.getWeight() > weight){
+				errorPath.setWeight(weight);
+				errorPath.setPath(path);
+			}
+		}
 	}
 }

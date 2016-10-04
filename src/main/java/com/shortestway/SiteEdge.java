@@ -47,4 +47,13 @@ public class SiteEdge {
     public double weight() {
         return weight;
     }
+    
+    /* (non-Javadoc)
+     * @see java.lang.Object#toString()
+     * @author yexh
+     */
+    @Override
+    public String toString() {
+    	return v+" to "+w+"["+weight+"]";
+    }
 }

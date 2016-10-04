@@ -77,6 +77,24 @@ public class EdgeWeightedDigraph {
     	}
     }
     
+    public void removeSite(int v){
+    	//去除以v开始的边
+    	for(SiteEdge e : adj[v]){
+    		adj[v].remove(e);
+    		E--;
+    	}
+    	//去除以v结尾的边
+    	for(int i=0;i<adj.length;i++){
+    		for(SiteEdge e : adj[i]){
+        		if(e.to() == v){
+        			adj[v].remove(e);
+        			E--;
+        			break;
+        		}
+        	}
+    	}
+    }
+    
     public SiteEdge getEdge(int v, int w){
     	for(SiteEdge e : adj[v]){
     		if(e.to() == w){
