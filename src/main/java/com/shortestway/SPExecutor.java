@@ -120,7 +120,7 @@ public class SPExecutor {
 		PreparedStatement ps = null;
 		ResultSet rs = null;
 		try {
-			ps = conn.prepareStatement("select from_id,to_id,distance from tb_site_relation");
+			ps = conn.prepareStatement("select from_id,to_id,distance from tb_site_edge");
 			rs = ps.executeQuery();
 			while(rs.next()){
 				SiteEdge siteEdge = new SiteEdge(rs.getInt(1), rs.getInt(2), rs.getDouble(3));
