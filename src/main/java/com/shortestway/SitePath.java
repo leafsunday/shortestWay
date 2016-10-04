@@ -17,8 +17,6 @@ public class SitePath {
 	private int to;
 	private double weight;
 	private StringBuffer path;
-	private boolean subSiteError;
-	private boolean avoidPathError;
 	
 	public SitePath(){}
 	
@@ -30,14 +28,11 @@ public class SitePath {
 	 * @param subSiteError
 	 * @param avoidPathError
 	 */
-	public SitePath(int from, int to, double weight, StringBuffer path, boolean subSiteError, boolean avoidPathError) {
-		super();
+	public SitePath(int from, int to, double weight, StringBuffer path) {
 		this.from = from;
 		this.to = to;
 		this.weight = weight;
 		this.path = path;
-		this.subSiteError = subSiteError;
-		this.avoidPathError = avoidPathError;
 	}
 
 	public int getFrom() {
@@ -70,25 +65,5 @@ public class SitePath {
 	
 	public void setPath(StringBuffer path) {
 		this.path = path;
-	}
-
-	
-	public boolean isSubSiteError() {
-		return subSiteError;
-	}
-
-	
-	public void setSubSiteError(boolean subSiteError) {
-		this.subSiteError = subSiteError;
-	}
-
-	
-	public boolean isAvoidPathError() {
-		return avoidPathError;
-	}
-
-	
-	public void setAvoidPathError(boolean avoidPathError) {
-		this.avoidPathError = avoidPathError;
 	}
 }
