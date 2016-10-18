@@ -18,7 +18,9 @@ public class SitePath {
 	private double weight;
 	private StringBuffer path;
 	
-	public SitePath(){}
+	public SitePath(){
+		this.path = new StringBuffer();
+	}
 	
 	/**
 	 * @param from
