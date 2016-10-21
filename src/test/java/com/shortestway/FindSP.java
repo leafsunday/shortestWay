@@ -15,6 +15,5 @@ public class FindSP {
 	public static void main(String[] args){
 		SPExecutor executor = new SPExecutor();
 		executor.exec();
-//		System.out.println(executor.check("4201,1212,1213,1215,1049,1047,2801,1045,1043,1041,1039,1002,1037,4003,1035,1033,1031,1001,1029,1027,1053,1004,2602,1023"));
 	}
 }

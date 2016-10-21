@@ -217,8 +217,8 @@ public class SPExecutor {
 	}
 
 	private Set<String> getSubSiteEdge(List<Site> subSiteList, Map<Integer, Site> siteMapOfId,String path){
-		Set<String> edges = new TreeSet<String>();;
-		if(path != null && path.length() > 9){
+		Set<String> edges = new TreeSet<String>();
+        if(path != null && path.length() > 9){
 			for(Site subSite : subSiteList){
 				String subSiteNo = subSite.getSiteNo();
 				String parnetNo = siteMapOfId.get(subSite.getParentId()).getSiteNo();
@@ -238,8 +238,8 @@ public class SPExecutor {
 	}
 
 	private Set<String> getSubSite(List<Site> subSiteList, Map<Integer, Site> siteMapOfId, String path){
-		Set<String> siteSet = new TreeSet<String>();;
-		if(path != null && path.length() > 9){
+		Set<String> siteSet = new TreeSet<String>();
+        if(path != null && path.length() > 9){
 			for(Site subSite : subSiteList){
 				String subSiteNo = subSite.getSiteNo();
 				String parnetNo = siteMapOfId.get(subSite.getParentId()).getSiteNo();
@@ -370,8 +370,6 @@ public class SPExecutor {
 			String path = errorPath.getPath().toString();
 			errorPath.setWeight(Double.POSITIVE_INFINITY);
 			reComputeOfEdge(errorPath, subSiteList, siteMapOfId, weight, path, G, siteMapOfNo);
-			//替换环路 进行 最短路径矫正
-//			reComputeOfCycle(errorPath, subSiteList, siteMapOfId, weight, path, G, siteMapOfNo, 0);
 			if(errorPath.getWeight() < Double.POSITIVE_INFINITY){
 				errorPath.getPath().insert(0, siteMapOfId.get(errorPath.getFrom()).getSiteNo()
 						+" to "+siteMapOfId.get(errorPath.getTo()).getSiteNo()
@@ -395,7 +393,7 @@ public class SPExecutor {
 		/*
 		 * 开始计算最短路径
 		 */
-		ExecutorService executor = Executors.newFixedThreadPool(5);
+		ExecutorService executor = Executors.newFixedThreadPool(4);
 		Iterator<Integer> siteIt = siteMapOfId.keySet().iterator();
 		while(siteIt.hasNext()){
 			final Integer vId = siteIt.next();
@@ -430,7 +428,7 @@ public class SPExecutor {
 		while(!executor.isTerminated()){}
 
 		//错误路径处理
-		executor = Executors.newFixedThreadPool(5);
+		executor = Executors.newFixedThreadPool(4);
 		for(int i=0;i<errorPathList.size();i++){
 			final SitePath errorPath = errorPathList.get(i);
 			executor.execute(new Runnable(){
@@ -439,8 +437,6 @@ public class SPExecutor {
 					String path = errorPath.getPath().toString();
 					errorPath.setWeight(Double.POSITIVE_INFINITY);
 					reComputeOfEdge(errorPath, subSiteList, siteMapOfId, weight, path, G, siteMapOfNo);
-					//替换环路 进行 最短路径矫正
-//					reComputeOfCycle(errorPath, subSiteList, siteMapOfId, weight, path, G, siteMapOfNo, 0);
 					if(errorPath.getWeight() < Double.POSITIVE_INFINITY){
 						errorPath.getPath().insert(0, siteMapOfId.get(errorPath.getFrom()).getSiteNo()
 								+""+siteMapOfId.get(errorPath.getTo()).getSiteNo()

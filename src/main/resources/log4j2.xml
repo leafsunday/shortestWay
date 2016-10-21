@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="info" monitorInternal="30">
+	<Appenders>
+		<Console name="stdout">
+			<PatternLayout pattern="%d{ABSOLUTE} %m%n" />
+		</Console>
+		<File name="siteFile" fileName="D:/site.log">
+			<PatternLayout pattern="%d{ABSOLUTE} %m%n" />
+		</File>
+	</Appenders>
+	<Loggers>
+		<Root level="info">
+			<AppenderRef ref="siteFile" />
+		</Root>
+	</Loggers>
+</Configuration>
